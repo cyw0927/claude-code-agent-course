@@ -26,3 +26,8 @@ C:\\dev\\claude-code-agent-course
 ```
 
 실습 브랜치: `ax-job-agent`
+
+## 문서
+
+- [전체 STEP 진행표](docs/STEP_PLAN.md)
+- [채용공고 데이터 명세](docs/DATA_SPEC.md)
