@@ -3,3 +3,5 @@ __pycache__/
 .ipynb_checkpoints/
 .env
 *.pyc
+chapter11/ax-job-agent/reports/*.md
+!chapter11/ax-job-agent/reports/.gitkeep

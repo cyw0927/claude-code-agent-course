@@ -1,39 +1,43 @@
 # AX 채용정보 Agent Pipeline
 
-Chapter 11 실습 프로젝트입니다.
+고용24 Open API에서 AX 채용공고를 수집하고, pandas 전처리와 Gemini 요약을 거쳐
+Markdown 보고서와 선택적 Slack/Gmail 알림을 만드는 Chapter 11 실습 프로젝트입니다.
 
-## 현재 단계
+## 로컬 실행
 
-STEP 09. Gemini API 연동 완료 → STEP 10. Gemini 결과 검증 (**HUMAN CHECK REQUIRED, 사용자 확인 대기 중**)
-
-- STEP 01 개발환경 확인: 자동 실행 확인 완료
-- STEP 02 수집 데이터 명세: 완료
-- STEP 03 채용공고 페이지 접근 테스트: 완료 (잡코리아 robots.txt가 `ClaudeBot`/`anthropic-ai`/`Claude-Web`을 전체 차단하고 있어, 실크롤링 대신 샘플 데이터 기반으로 전환하기로 결정)
-- STEP 04 소량 데이터 수집: `data/raw/sample_jobs.html` 샘플로 공고 8건 파싱 확인
-- STEP 05 DataFrame 생성: 완료
-- STEP 06 전처리 · 중복 제거: 완료
-- STEP 07 신규 공고 판별: `data/processed/jobs_history.csv`(검증용) 대비 신규 4건/기존 4건 확인
-- STEP 08 기본 분석 · AX 관련 공고 필터링: pandas 통계 확인, AX/AI 키워드 필터로 5건/8건 확인
-- STEP 09 Gemini API 연동: 실제 Gemini API(`gemini-flash-lite-latest`) 호출, AX/AI 관련 공고 3건에 대한 응답 수신
-- STEP 10 Gemini 결과 검증: **사용자가 Notebook의 `verification_df` 표를 직접 확인해야 진행 가능**
-- 버그 수정: VS Code에서 Notebook 실행 시 STEP 04 이후 `FileNotFoundError`가 나던 문제를 고침 (실행 위치에 따라 프로젝트 루트 경로 계산이 달라지던 버그)
-
-아직 하지 않는 것:
-
-- 잡코리아(또는 다른 사이트) 실크롤링 — robots.txt 차단 문제로 보류 중, 별도 재검토 필요
-- Slack / Gmail
-- GitHub Actions
-
-## 로컬 작업 경로
-
-```text
-C:\\dev\\claude-code-agent-course
+```powershell
+Set-Location C:\dev\claude-code-agent-course\chapter11\ax-job-agent
+.\.venv\Scripts\Activate.ps1
+Copy-Item .env.example .env
+# .env에 필요한 키를 입력한 뒤:
+python main.py --sample --skip-gemini --skip-notifications
 ```
 
-실습 브랜치: `ax-job-agent`
+키가 없으면 로컬 샘플 데이터로 파이프라인을 확인합니다. 실제 고용24 데이터만 허용하려면:
+
+```powershell
+python main.py --require-live --update-history --skip-notifications
+```
+
+주요 옵션:
+
+- `--require-live`: `WORK24_API_KEY`가 없으면 실패
+- `--sample`: 로컬 `.env`에 키가 있어도 검증용 샘플을 강제로 사용
+- `--update-history`: 성공한 공고를 다음 실행의 신규 판별 기록에 저장
+- `--skip-gemini`: Gemini 호출 생략
+- `--skip-notifications`: Slack/Gmail 발송 생략
+
+## 자동 실행
+
+`.github/workflows/ax-job-agent.yml`은 매주 월요일 오전 9시(한국시간)에 실행됩니다.
+GitHub 저장소의 **Settings → Secrets and variables → Actions**에 최소
+`WORK24_API_KEY`와 `GEMINI_API_KEY`를 등록해야 합니다. Slack/Gmail 값은 선택입니다.
+자동 실행은 실제 데이터 키가 없을 때 실패하며, 샘플 결과를 알림으로 보내지 않습니다.
+
+보고서는 Actions 실행 화면의 `ax-job-weekly-report` artifact에서 받습니다.
 
 ## 문서
 
-- [전체 STEP 진행표](docs/STEP_PLAN.md)
-- [채용공고 데이터 명세](docs/DATA_SPEC.md)
-- [현재 작업 진행 상황](docs/PROGRESS.md)
+- [전체 진행표](docs/STEP_PLAN.md)
+- [데이터 명세](docs/DATA_SPEC.md)
+- [현재 진행 상황](docs/PROGRESS.md)

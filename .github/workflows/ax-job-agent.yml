@@ -1,0 +1,58 @@
+name: AX job agent
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 매주 월요일 09:00 KST (UTC 00:00)
+    - cron: "0 0 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  weekly-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: chapter11/ax-job-agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: chapter11/ax-job-agent/requirements.txt
+
+      - name: Restore job history
+        uses: actions/cache@v6
+        with:
+          path: chapter11/ax-job-agent/data/processed/jobs_history.csv
+          key: ax-job-history-${{ github.run_id }}
+          restore-keys: |
+            ax-job-history-
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run live pipeline
+        env:
+          WORK24_API_KEY: ${{ secrets.WORK24_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python main.py --require-live --update-history
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ax-job-weekly-report-${{ github.run_number }}
+          path: chapter11/ax-job-agent/reports/*.md
+          if-no-files-found: warn
+          retention-days: 30
