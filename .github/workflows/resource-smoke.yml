@@ -1,0 +1,34 @@
+name: Resource Smoke Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Show environment
+        shell: pwsh
+        run: |
+          python --version
+          git --version
+          python -c "import sys; print(sys.stdout.encoding)"
+
+      - name: Run shared Windows baseline smoke
+        shell: pwsh
+        run: .\scripts\run-baseline-smoke.ps1
