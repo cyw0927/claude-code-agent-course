@@ -15,8 +15,8 @@ Notebook에서 실제 출력을 확인하기 전에는 해당 단계를 완료�
 | 06 | 전처리·중복 제거 | 완료 | 결측치와 URL 중복 처리 결과 확인 |
 | 07 | 신규 공고 판별 | 완료 | 이전 URL 목록과 비교해 신규 공고만 분리 |
 | 08 | 기본 분석·관련 공고 필터링 | 완료 | pandas 통계와 AX 관련 필터 결과 확인 |
-| 09 | Gemini API 연동 | 대기 | 일부 공고에 대한 API 응답 확인 |
-| 10 | Gemini 결과 검증 | 대기 | 원문과 결과를 사람이 직접 비교 |
+| 09 | Gemini API 연동 | 완료 | 일부 공고에 대한 API 응답 확인 |
+| 10 | Gemini 결과 검증 | HUMAN CHECK REQUIRED — 사용자 확인 대기 | 원문과 결과를 사람이 직접 비교 |
 | 11 | Markdown 보고서 생성 | 대기 | 계산 사실과 Gemini 해석을 분리한 보고서 확인 |
 | 12 | Slack 발송 | 대기 | 테스트 메시지 도착과 한글·링크 확인 |
 | 13 | Gmail 발송 | 대기 | 테스트 메일 도착과 본문 형식 확인 |
@@ -95,6 +95,19 @@ pandas로 기본 통계를 계산하고 `job_title` 키워드 기반 AX/AI 필�
 - `job_title`에 "AX" 또는 "AI"가 포함된 공고: 5건/8건
 
 이 필터는 단순 문자열 포함 여부만 사용하는 규칙이며, 의미 기반 판단(오탐 검토 포함)은 STEP 09 Gemini 단계에서 다시 검토한다.
+
+## STEP 09 실제 확인 결과
+
+`google-genai` SDK로 실제 Gemini API를 호출했다 (Notebook에서 실제 실행, `.env`의 `GEMINI_API_KEY` 사용).
+
+- 모델명 시행착오: `gemini-2.5-flash` → 404("no longer available to new users"), `gemini-3.6-flash`/`gemini-flash-latest` → 간헐적 503("high demand"). 최종적으로 `gemini-flash-latest`에 재시도 로직(최대 4회, 5초 간격)을 적용해 안정적으로 응답 받음.
+- AX/AI 관련 공고 5건 중 3건에 대해 실제 응답 수신: "직무 유형 / AX·AI 관련성 / 추천 이유" 3항목 형식으로 응답.
+- 3건 모두 "추천 이유"는 "정보 없음"으로 답함 — 가진 정보(회사명/제목/경력/지역)만으로는 추천 근거를 만들지 않고 프롬프트 지시(정보 부족 시 정보 없음)를 따름.
+- `DATA_SPEC.md`가 상세 페이지 내용을 수집하지 않기로 했으므로, "요구 기술 추출"처럼 원문이 필요한 항목은 이번 단계에서 시도하지 않았다.
+
+## STEP 10. Gemini 결과 검증 — HUMAN CHECK REQUIRED
+
+Notebook에 `verification_df`(회사명/제목/경력/지역 + Gemini 응답 + 사람 확인 컬럼)를 만들어 두었다. 사용자가 직접 보고 판단해야 STEP 10이 완료된다. Claude가 자동으로 "검증 통과"로 표시하지 않는다.
 
 ## 진행 원칙
 

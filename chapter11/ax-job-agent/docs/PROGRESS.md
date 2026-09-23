@@ -122,15 +122,34 @@ Notebook 실행 출력 기준:
 - HUMAN CHECK 필요 여부: 아니오 (자동 실행으로 충분히 확인됨)
 - 다음 STEP: STEP 09 (Gemini API 연동) — **API Key 필요, 진입 전 사용자 확인 필요**
 
+### STEP 09. Gemini API 연동 — 완료
+
+- 작업 내용: `.env`의 `GEMINI_API_KEY`로 실제 Gemini API 호출. AX/AI 관련 공고 5건 중 3건에 대해 "직무 유형 / AX·AI 관련성 / 추천 이유" 3항목을 물어봄.
+- 수정 파일: `notebooks/ax_job_pipeline.ipynb` (STEP 09 셀 추가), `requirements.txt`(`google-genai` 추가), `.env.example`(신규, `GEMINI_API_KEY=` 템플릿), `docs/STEP_PLAN.md`
+- 실행 명령: Notebook 코드 셀 실행 (`google.genai.Client.models.generate_content`, 재시도 로직 포함)
+- 실제 결과: 모델명 시행착오 — `gemini-2.5-flash`는 404("no longer available to new users"), `gemini-3.6-flash`/`gemini-flash-latest`는 간헐적 503("high demand"). 최종적으로 `gemini-flash-latest` + 재시도(최대 4회, 5초 간격)로 3건 모두 실제 응답 수신. 재시도 로직이 실제 503 상황에서 동작하는 것도 확인함. 3건 모두 "추천 이유"는 "정보 없음"으로 답변(정보 부족 시 지어내지 말라는 프롬프트 지시를 따름).
+- 남은 문제: `DATA_SPEC.md`가 상세 페이지를 수집하지 않기로 했으므로 "요구 기술 추출" 같은 항목은 시도하지 않음. 응답 품질 자체는 아직 검증 전.
+- HUMAN CHECK 필요 여부: 이 STEP 자체는 아니오. **다음 STEP(10)이 HUMAN CHECK 대상.**
+- 다음 STEP: STEP 10 (Gemini 결과 검증) — **HUMAN CHECK REQUIRED, 여기서 대기 중**
+
+### STEP 10. Gemini 결과 검증 — HUMAN CHECK REQUIRED (대기 중)
+
+- 작업 내용: Notebook에 `verification_df`(회사명/제목/경력/지역 + Gemini 응답 + `사람_확인_결과`/`비고` 빈 컬럼)를 만들어 뒀다. 이 표를 사용자가 직접 보고 판단해야 한다.
+- 수정 파일: `notebooks/ax_job_pipeline.ipynb` (STEP 10 셀 추가), `docs/STEP_PLAN.md`
+- 실제 결과: 표 생성까지는 자동 실행으로 확인. 검증(적절/과도한 해석/오류 판단)은 사람 몫이라 아직 비어 있음.
+- HUMAN CHECK 필요 여부: **예 — 이 세션은 여기서 사용자 응답을 기다리는 중이다.**
+- 다음 STEP: 사용자가 `verification_df` 검토 결과를 알려주면 STEP 11(Markdown 보고서 생성)로 진행.
+
 ### 환경 관련 특이사항 — Notebook 실행 방법
 
-이 로컬 환경에서는 `jupyter nbconvert --execute` (CLI)가 Windows 애플리케이션 제어 정책에 의해 차단된다(`[WinError 4551] 애플리케이션 제어 정책에서 이 파일을 차단했습니다`). 대신 `nbclient.NotebookClient`를 Python 스크립트에서 직접 호출하는 방식은 정상 동작한다. 또한 기본 `python3` 커널스펙은 PATH의 다른 Python(3.12)을 가리키므로, 프로젝트 venv에 바인딩된 전용 커널(`ax-job-agent`)을 등록해 사용했다. 자세한 명령은 9번 항목 참고.
+이 로컬 환경에서는 `jupyter nbconvert --execute` (CLI)가 Windows 애플리케이션 제어 정책에 의해 차단된다(`[WinError 4551] 애플리케이션 제어 정책에서 이 파일을 차단했습니다`). 대신 `nbclient.NotebookClient`를 Python 스크립트에서 직접 호출하는 방식은 정상 동작한다. 또한 기본 `python3` 커널스펙은 PATH의 다른 Python(3.12)을 가리키므로, 프로젝트 venv에 바인딩된 전용 커널(`ax-job-agent`)을 등록해 사용했다. 자세한 명령은 10번 항목 참고.
+
+**주의(비용/부작용):** `NotebookClient.execute()`는 기본적으로 Notebook 전체를 처음부터 다시 실행한다. STEP 09 셀에 실제 Gemini API 호출이 있으므로, Notebook을 통째로 재실행할 때마다 Gemini API가 다시 호출된다(실제 비용 발생, 무료 한도 내에서는 큰 문제 아니지만 인지하고 있어야 함). STEP 09 이후에는 필요할 때만 재실행하고, 이후 STEP 셀만 따로 확인하고 싶다면 `NotebookClient`에 `resources`로 특정 범위만 넘기는 방법을 검토해야 한다(아직 구현 안 함).
 
 ## 8. 아직 하지 않은 작업
 
-`docs/STEP_PLAN.md` 기준 STEP 09~18은 모두 "대기" 상태다.
-- STEP 09~10: Gemini API 연동 및 검증 — 미착수 (API Key 필요, 도달 시 반드시 확인 요청)
-- STEP 11: Markdown 보고서 생성 — 미착수
+`docs/STEP_PLAN.md` 기준 STEP 11~18은 모두 "대기" 상태다. STEP 10은 HUMAN CHECK 대기 중.
+- STEP 11: Markdown 보고서 생성 — 미착수, STEP 10 사용자 확인 후 시작
 - STEP 12~13: Slack/Gmail 발송 — 미착수 (실제 발송 직전 반드시 확인 요청)
 - STEP 14~16: 함수화, `main.py` 통합, 로컬 전체 실행 검증 — 미착수
 - STEP 17~18: GitHub Actions 수동/주간 실행 — 미착수 (원격 push 필요 시점에 반드시 확인 요청)
@@ -139,8 +158,8 @@ Notebook 실행 출력 기준:
 
 ## 9. 다음 시작 위치
 
-1. **STEP 09(Gemini API 연동) 진입 전 반드시 사용자에게 API Key 확보 여부를 먼저 확인한다 (HUMAN CHECK / 정지 조건).** Gemini는 STEP 09 이전에는 설치·구현하지 않는다는 원칙을 지켰다.
-2. API Key가 준비되면 `.env`(gitignore 대상)에 `GEMINI_API_KEY`를 넣고, 저장소에는 `.env.example`만 추가한다.
+1. **여기서 대기 중: STEP 10 Gemini 결과 검증.** 사용자가 Notebook의 `verification_df` 표(STEP 10)를 보고 Gemini 응답 3건이 적절한지 판단해서 알려줘야 STEP 11로 진행한다.
+2. 사용자 확인 후 STEP 11(Markdown 보고서 생성)로 진행 — `reports/` 아래에 "이번 주 요약/주요 동향/추천 공고/데이터 기준/주의사항" 구조로 작성 예정.
 3. 여유가 있을 때 사용자가 VS Code에서 Notebook을 열어 `ax-job-agent` 커널로 전체 셀을 한 번 눈으로 확인하면 STEP 01의 HUMAN CHECK 항목도 함께 정리된다.
 
 ## 10. 작업을 다시 시작할 때 사용할 PowerShell 명령
