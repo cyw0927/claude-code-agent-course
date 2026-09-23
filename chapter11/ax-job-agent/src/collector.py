@@ -1,4 +1,4 @@
-"""고용24 Open API 또는 로컬 샘플에서 채용공고를 수집한다."""
+"""잡코리아, 고용24 또는 로컬 샘플에서 채용공고를 수집한다."""
 
 import os
 from datetime import datetime
@@ -6,6 +6,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from src.jobkorea_client import collect_jobkorea_jobs
 from src.work24_client import DATA_SPEC_COLUMNS, Work24ConfigError, collect_work24_jobs
 
 
@@ -37,10 +38,16 @@ def collect_jobs(
     search_keyword: str = "AX",
     require_live: bool = False,
     force_sample: bool = False,
+    source: str = "jobkorea",
+    max_jobs: int = 20,
 ) -> tuple[list[dict], str]:
-    """실제 키가 있으면 고용24를 사용하고, 로컬 실행은 샘플로 검증할 수 있다."""
+    """선택한 실데이터 수집원을 사용하고, 필요하면 샘플로 검증한다."""
     if force_sample:
         return load_sample_jobs(project_root, search_keyword), "sample"
+    if source == "jobkorea":
+        return collect_jobkorea_jobs(search_keyword, max_jobs=max_jobs), "jobkorea"
+    if source != "work24":
+        raise ValueError(f"지원하지 않는 수집원입니다: {source}")
     api_key = os.environ.get("WORK24_API_KEY", "").strip()
     if api_key:
         return collect_work24_jobs(api_key, search_keyword=search_keyword), "work24"

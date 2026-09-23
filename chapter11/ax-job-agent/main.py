@@ -18,8 +18,15 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="AX 채용정보 주간 파이프라인")
-    parser.add_argument("--require-live", action="store_true", help="고용24 키가 없으면 실패")
-    parser.add_argument("--sample", action="store_true", help="API 키가 있어도 로컬 샘플 사용")
+    parser.add_argument("--require-live", action="store_true", help="샘플 대체를 허용하지 않음")
+    parser.add_argument("--sample", action="store_true", help="로컬 검증용 샘플 사용")
+    parser.add_argument(
+        "--source",
+        choices=["jobkorea", "work24"],
+        default=None,
+        help="실데이터 수집원(기본: JOB_SOURCE 또는 jobkorea)",
+    )
+    parser.add_argument("--max-jobs", type=int, default=None, help="수집 건수(1~20)")
     parser.add_argument("--update-history", action="store_true", help="성공 후 신규 판별 기록 저장")
     parser.add_argument("--skip-gemini", action="store_true", help="Gemini 분석 생략")
     parser.add_argument("--skip-notifications", action="store_true", help="Slack/Gmail 발송 생략")
@@ -27,8 +34,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    args = parse_args()
     load_dotenv(PROJECT_ROOT / ".env")
+    args = parse_args()
+    source_name = args.source or os.environ.get("JOB_SOURCE", "jobkorea")
+    max_jobs = args.max_jobs or int(os.environ.get("JOBKOREA_MAX_JOBS", "20"))
 
     print("1) 채용공고 수집")
     if args.require_live and args.sample:
@@ -38,6 +47,8 @@ def main() -> None:
         search_keyword="AX",
         require_live=args.require_live,
         force_sample=args.sample,
+        source=source_name,
+        max_jobs=max_jobs,
     )
     print(f"   -> {len(jobs)}건 수집 (source={source})")
 
