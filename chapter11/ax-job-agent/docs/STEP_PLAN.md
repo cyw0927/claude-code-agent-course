@@ -100,14 +100,23 @@ pandas로 기본 통계를 계산하고 `job_title` 키워드 기반 AX/AI 필�
 
 `google-genai` SDK로 실제 Gemini API를 호출했다 (Notebook에서 실제 실행, `.env`의 `GEMINI_API_KEY` 사용).
 
-- 모델명 시행착오: `gemini-2.5-flash` → 404("no longer available to new users"), `gemini-3.6-flash`/`gemini-flash-latest` → 간헐적 503("high demand"). 최종적으로 `gemini-flash-latest`에 재시도 로직(최대 4회, 5초 간격)을 적용해 안정적으로 응답 받음.
+- 모델명 시행착오: `gemini-2.5-flash` → 404("no longer available to new users"), `gemini-3.6-flash`/`gemini-flash-latest` → 간헐적 503("high demand"), 반복 호출 후 `gemini-flash-latest`(내부적으로 `gemini-3.8-flash`)는 무료 등급 일일 한도(20회/day)로 429 RESOURCE_EXHAUSTED. 최종적으로 별도 쿼터를 쓰는 `gemini-flash-lite-latest`로 교체 + 재시도 로직(최대 4회, 5초 간격)을 적용해 안정적으로 응답 받음.
 - AX/AI 관련 공고 5건 중 3건에 대해 실제 응답 수신: "직무 유형 / AX·AI 관련성 / 추천 이유" 3항목 형식으로 응답.
 - 3건 모두 "추천 이유"는 "정보 없음"으로 답함 — 가진 정보(회사명/제목/경력/지역)만으로는 추천 근거를 만들지 않고 프롬프트 지시(정보 부족 시 정보 없음)를 따름.
+- 1번 공고("AX 전략 기획 담당자")에 대해서는 "AX/AI 관련성 설명"도 "정보 없음"으로 답함 — 제목에 "AX"가 명시되어 있음에도 관련성을 설명하지 않아, 모델을 바꾸면 응답 품질이 균일하지 않을 수 있음을 실제로 확인했다. 이 부분이 STEP 10 사람 검증에서 특히 확인이 필요하다.
 - `DATA_SPEC.md`가 상세 페이지 내용을 수집하지 않기로 했으므로, "요구 기술 추출"처럼 원문이 필요한 항목은 이번 단계에서 시도하지 않았다.
 
 ## STEP 10. Gemini 결과 검증 — HUMAN CHECK REQUIRED
 
-Notebook에 `verification_df`(회사명/제목/경력/지역 + Gemini 응답 + 사람 확인 컬럼)를 만들어 두었다. 사용자가 직접 보고 판단해야 STEP 10이 완료된다. Claude가 자동으로 "검증 통과"로 표시하지 않는다.
+Notebook에 `verification_df`(회사명/제목/경력/지역 + Gemini 응답 + 사람 확인 컬럼)를 만들어 두었다. 사용자가 직접 보고 판단해야 STEP 10이 완료된다. Claude가 자동으로 "검증 통과"로 표시하지 않는다. 특히 1번 공고의 "AX/AI 관련성: 정보 없음" 응답이 적절한지 확인이 필요하다.
+
+## 버그 수정: Notebook 경로 계산이 실행 위치에 따라 깨지던 문제 (2026-09-23)
+
+사용자가 VS Code에서 `ax_job_pipeline.ipynb`를 직접 열어 실행했을 때, STEP 04 "샘플 데이터 안내" 이후 코드 셀에서 `FileNotFoundError`가 발생했다.
+
+- 원인: STEP 04/07/09 코드가 `Path.cwd().parent`로 프로젝트 루트를 추정했는데, 이는 Jupyter 커널의 cwd가 `notebooks/`일 때만 맞는 가정이었다. VS Code의 Jupyter 확장은 (설정에 따라) cwd를 프로젝트 루트(`ax-job-agent/`) 자체로 잡을 수 있고, 이 경우 `Path.cwd().parent`는 `chapter11/`이 되어 `data/raw/sample_jobs.html` 등을 찾지 못했다.
+- 수정: `resolve_project_root()` 헬퍼를 추가해 `Path.cwd()`와 `Path.cwd().parent` 중 `data/`와 `requirements.txt`가 함께 있는 쪽을 프로젝트 루트로 판단하도록 바꿨다. STEP 04(`SAMPLE_HTML_PATH`), STEP 07(`HISTORY_PATH`), STEP 09(`ENV_PATH`)가 모두 이 `PROJECT_ROOT`를 사용하도록 통일했다.
+- 검증: `nbclient`로 커널 cwd를 프로젝트 루트로 강제해 버그를 실제로 재현한 뒤, 수정 후 같은 조건에서 정상 실행되는 것을 확인했다 (`PROJECT_ROOT` 출력이 올바르게 `.../ax-job-agent`로 찍힘, 이후 STEP 결과도 기존과 동일).
 
 ## 진행 원칙
 

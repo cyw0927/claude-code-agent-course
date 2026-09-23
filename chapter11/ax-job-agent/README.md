@@ -14,8 +14,9 @@ STEP 09. Gemini API 연동 완료 → STEP 10. Gemini 결과 검증 (**HUMAN CHE
 - STEP 06 전처리 · 중복 제거: 완료
 - STEP 07 신규 공고 판별: `data/processed/jobs_history.csv`(검증용) 대비 신규 4건/기존 4건 확인
 - STEP 08 기본 분석 · AX 관련 공고 필터링: pandas 통계 확인, AX/AI 키워드 필터로 5건/8건 확인
-- STEP 09 Gemini API 연동: 실제 Gemini API(`gemini-flash-latest`) 호출, AX/AI 관련 공고 3건에 대한 응답 수신
+- STEP 09 Gemini API 연동: 실제 Gemini API(`gemini-flash-lite-latest`) 호출, AX/AI 관련 공고 3건에 대한 응답 수신
 - STEP 10 Gemini 결과 검증: **사용자가 Notebook의 `verification_df` 표를 직접 확인해야 진행 가능**
+- 버그 수정: VS Code에서 Notebook 실행 시 STEP 04 이후 `FileNotFoundError`가 나던 문제를 고침 (실행 위치에 따라 프로젝트 루트 경로 계산이 달라지던 버그)
 
 아직 하지 않는 것:
 

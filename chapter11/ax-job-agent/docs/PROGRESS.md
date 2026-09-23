@@ -127,10 +127,20 @@ Notebook 실행 출력 기준:
 - 작업 내용: `.env`의 `GEMINI_API_KEY`로 실제 Gemini API 호출. AX/AI 관련 공고 5건 중 3건에 대해 "직무 유형 / AX·AI 관련성 / 추천 이유" 3항목을 물어봄.
 - 수정 파일: `notebooks/ax_job_pipeline.ipynb` (STEP 09 셀 추가), `requirements.txt`(`google-genai` 추가), `.env.example`(신규, `GEMINI_API_KEY=` 템플릿), `docs/STEP_PLAN.md`
 - 실행 명령: Notebook 코드 셀 실행 (`google.genai.Client.models.generate_content`, 재시도 로직 포함)
-- 실제 결과: 모델명 시행착오 — `gemini-2.5-flash`는 404("no longer available to new users"), `gemini-3.6-flash`/`gemini-flash-latest`는 간헐적 503("high demand"). 최종적으로 `gemini-flash-latest` + 재시도(최대 4회, 5초 간격)로 3건 모두 실제 응답 수신. 재시도 로직이 실제 503 상황에서 동작하는 것도 확인함. 3건 모두 "추천 이유"는 "정보 없음"으로 답변(정보 부족 시 지어내지 말라는 프롬프트 지시를 따름).
-- 남은 문제: `DATA_SPEC.md`가 상세 페이지를 수집하지 않기로 했으므로 "요구 기술 추출" 같은 항목은 시도하지 않음. 응답 품질 자체는 아직 검증 전.
-- HUMAN CHECK 필요 여부: 이 STEP 자체는 아니오. **다음 STEP(10)이 HUMAN CHECK 대상.**
+- 실제 결과: 모델명 시행착오 — `gemini-2.5-flash`는 404("no longer available to new users"), `gemini-3.6-flash`/`gemini-flash-latest`는 간헐적 503("high demand"), 이후 반복 테스트로 `gemini-flash-latest`(내부적으로 `gemini-3.8-flash`)가 무료 등급 일일 한도(20회/day)에 도달해 429 RESOURCE_EXHAUSTED. 별도 쿼터를 쓰는 `gemini-flash-lite-latest`로 교체 + 재시도(최대 4회, 5초 간격)로 최종 안정화, 3건 모두 실제 응답 수신.
+- 품질 관찰: 1번 공고("AX 전략 기획 담당자")에 대해 `gemini-flash-lite-latest`는 "AX/AI 관련성" 항목도 "정보 없음"으로 답함 — 제목에 "AX"가 명시되어 있는데도 관련성을 설명하지 않음. 모델을 바꾸면 같은 질문에도 응답 품질이 달라질 수 있음을 실제로 확인.
+- 남은 문제: `DATA_SPEC.md`가 상세 페이지를 수집하지 않기로 했으므로 "요구 기술 추출" 같은 항목은 시도하지 않음. 무료 등급 쿼터가 빠듯해(모델별 최대 20회/일 수준) 이후 STEP에서 Gemini 반복 호출 시 요청 수를 최소화해야 함.
+- HUMAN CHECK 필요 여부: 이 STEP 자체는 아니오. **다음 STEP(10)이 HUMAN CHECK 대상 — 특히 1번 공고의 "정보 없음" 응답이 적절한지.**
 - 다음 STEP: STEP 10 (Gemini 결과 검증) — **HUMAN CHECK REQUIRED, 여기서 대기 중**
+
+### 버그 수정. Notebook 경로 계산이 VS Code에서 깨지던 문제 — 완료
+
+- 문제: 사용자가 VS Code에서 Notebook을 직접 열어 실행했을 때 STEP 04 "샘플 데이터 안내" 이후 셀에서 `FileNotFoundError` 발생.
+- 원인: STEP 04/07/09 코드가 `Path.cwd().parent`로 프로젝트 루트를 추정했는데, 이는 커널 cwd가 `notebooks/`일 때만 유효한 가정이었다. VS Code Jupyter 확장이 cwd를 프로젝트 루트(`ax-job-agent/`)로 잡으면 `Path.cwd().parent`가 `chapter11/`이 되어 `data/raw/sample_jobs.html` 등을 못 찾음.
+- 수정 파일: `notebooks/ax_job_pipeline.ipynb` (STEP 04/07/09 셀에 `resolve_project_root()` 헬퍼 도입, `PROJECT_ROOT`로 통일)
+- 실행 명령: `nbclient`로 커널 cwd를 프로젝트 루트로 강제해 버그를 재현 → 수정 → 같은 조건으로 재실행해 정상 동작 확인
+- 실제 결과: 두 cwd 조건(프로젝트 루트, `notebooks/`) 모두에서 `PROJECT_ROOT`가 올바르게 `.../ax-job-agent`로 잡히고, 이후 STEP 결과(공고 8건, history 4건 등)가 기존과 동일하게 나옴
+- HUMAN CHECK 필요 여부: 아니오 (자동 실행으로 재현·수정·재검증 완료)
 
 ### STEP 10. Gemini 결과 검증 — HUMAN CHECK REQUIRED (대기 중)
 
@@ -144,7 +154,7 @@ Notebook 실행 출력 기준:
 
 이 로컬 환경에서는 `jupyter nbconvert --execute` (CLI)가 Windows 애플리케이션 제어 정책에 의해 차단된다(`[WinError 4551] 애플리케이션 제어 정책에서 이 파일을 차단했습니다`). 대신 `nbclient.NotebookClient`를 Python 스크립트에서 직접 호출하는 방식은 정상 동작한다. 또한 기본 `python3` 커널스펙은 PATH의 다른 Python(3.12)을 가리키므로, 프로젝트 venv에 바인딩된 전용 커널(`ax-job-agent`)을 등록해 사용했다. 자세한 명령은 10번 항목 참고.
 
-**주의(비용/부작용):** `NotebookClient.execute()`는 기본적으로 Notebook 전체를 처음부터 다시 실행한다. STEP 09 셀에 실제 Gemini API 호출이 있으므로, Notebook을 통째로 재실행할 때마다 Gemini API가 다시 호출된다(실제 비용 발생, 무료 한도 내에서는 큰 문제 아니지만 인지하고 있어야 함). STEP 09 이후에는 필요할 때만 재실행하고, 이후 STEP 셀만 따로 확인하고 싶다면 `NotebookClient`에 `resources`로 특정 범위만 넘기는 방법을 검토해야 한다(아직 구현 안 함).
+**주의(비용/부작용):** `NotebookClient.execute()`는 기본적으로 Notebook 전체를 처음부터 다시 실행한다. STEP 09 셀에 실제 Gemini API 호출이 있으므로, Notebook을 통째로 재실행할 때마다 Gemini API가 다시 호출된다. 실제로 이 세션에서 디버깅 중 전체 재실행을 여러 번 반복하다 `gemini-flash-latest`의 무료 등급 일일 한도(20회/day)를 소진해 429 RESOURCE_EXHAUSTED를 겪었다 — 그래서 현재 STEP 09 셀은 별도 쿼터를 쓰는 `gemini-flash-lite-latest`를 사용한다. STEP 09 이후에는 꼭 필요할 때만 전체 재실행하고, 이후 STEP 셀만 따로 확인하고 싶다면 `NotebookClient`에 `resources`로 특정 범위만 넘기는 방법을 검토해야 한다(아직 구현 안 함).
 
 ## 8. 아직 하지 않은 작업
 
