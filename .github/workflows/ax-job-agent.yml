@@ -41,12 +41,11 @@ jobs:
 
       - name: Run live pipeline
         env:
-          WORK24_API_KEY: ${{ secrets.WORK24_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: python main.py --require-live --update-history
+        run: python main.py --source jobkorea --require-live --update-history
 
       - name: Upload report
         if: always()

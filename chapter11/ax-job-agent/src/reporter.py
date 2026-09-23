@@ -92,6 +92,7 @@ def build_report_markdown(
         lines.append(f"- 수집 시각: {df_dedup['collected_at'].iloc[0]}")
     source_label = {
         "work24": "고용24 채용정보 Open API",
+        "jobkorea": "잡코리아 공개 검색 결과 1페이지",
         "sample": "로컬 검증용 sample_jobs.html (가상 데이터)",
     }.get(source, source)
     lines.append(f"- 데이터 출처: {source_label}")

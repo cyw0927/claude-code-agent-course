@@ -16,7 +16,7 @@ def build_slack_payload(report_date: str, summary_stats: dict, source: str) -> d
         f"- 전체 공고 수: {summary_stats['total']}건",
         f"- 신규 공고 수: {summary_stats['new']}건",
         f"- AX/AI 관련 공고 수: {summary_stats['ax_related']}건",
-        f"- 데이터 출처: {'고용24 Open API' if source == 'work24' else '로컬 검증용 샘플'}",
+        f"- 데이터 출처: {source}",
         "- 전체 보고서는 이번 실행의 GitHub Actions artifact에서 확인하세요.",
     ]
     return {"text": "\n".join(text_lines)}
